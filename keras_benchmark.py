@@ -16,6 +16,7 @@ def calculate_rmse(real, predict):
 test_size = 150
 df = read_csv('data/mastigadin.csv', header=None)
 df.set_index(list(df)[0], inplace=True)
+
 y_total = df.iloc[:, -1:].values
 x_total = df.iloc[:, :-1].values
 y_train = y_total[:-test_size, :]
@@ -24,6 +25,7 @@ y_test = y_total[-test_size:, :]
 x_test = x_total[-test_size:, :]
 
 tempo = time.time()
+
 # Neural net
 epochs = 200
 batch_size = 64

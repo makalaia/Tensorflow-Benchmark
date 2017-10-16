@@ -59,13 +59,13 @@ biases = {
 
 # Create model
 def multilayer_perceptron(x):
-    layer_1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
-    layer_2 = tf.add(tf.matmul(layer_1, weights['h2']), biases['b2'])
-    layer_3 = tf.add(tf.matmul(layer_2, weights['h3']), biases['b3'])
-    layer_4 = tf.add(tf.matmul(layer_3, weights['h4']), biases['b4'])
-    layer_5 = tf.add(tf.matmul(layer_4, weights['h5']), biases['b5'])
-    layer_6 = tf.add(tf.matmul(layer_5, weights['h6']), biases['b6'])
-    layer_7 = tf.add(tf.matmul(layer_6, weights['h7']), biases['b7'])
+    layer_1 = tf.nn.relu(tf.add(tf.matmul(x, weights['h1']), biases['b1']))
+    layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, weights['h2']), biases['b2']))
+    layer_3 = tf.nn.relu(tf.add(tf.matmul(layer_2, weights['h3']), biases['b3']))
+    layer_4 = tf.nn.relu(tf.add(tf.matmul(layer_3, weights['h4']), biases['b4']))
+    layer_5 = tf.nn.relu(tf.add(tf.matmul(layer_4, weights['h5']), biases['b5']))
+    layer_6 = tf.nn.relu(tf.add(tf.matmul(layer_5, weights['h6']), biases['b6']))
+    layer_7 = tf.nn.relu(tf.add(tf.matmul(layer_6, weights['h7']), biases['b7']))
     out_layer = tf.matmul(layer_7, weights['out']) + biases['out']
     return out_layer
 

@@ -101,7 +101,6 @@ with tf.Session() as sess:
         # Display logs per epoch step
         if epoch % display_step == 0:
             print("Epoch:", '%04d' % (epoch + 1), "cost={:.9f}".format(avg_cost), "TIME: %.2f" % (time.time() - tp))
-    print("Optimization Finished!")
     print('TIME: ' + str(time.time() - tempo))
 
     # Test model
@@ -117,4 +116,5 @@ plt.plot(y_total, label='REAL DATA')
 plt.plot(y_trained, label='TRAINED DATA')
 plt.plot(range(len(y_train), len(y_total)), y_tested, label='TEST DATA')
 plt.legend()
+plt.title('TENSORFLOW')
 plt.show()

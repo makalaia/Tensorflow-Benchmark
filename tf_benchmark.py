@@ -36,24 +36,24 @@ Y = tf.placeholder("float", [None, n_output])
 
 # Store layers weight & bias
 weights = {
-    'h1': tf.get_variable('h1', shape=[n_input, n_hidden]),
-    'h2': tf.get_variable('h2', shape=[n_hidden, n_hidden]),
-    'h3': tf.get_variable('h3', shape=[n_hidden, n_hidden]),
-    'h4': tf.get_variable('h4', shape=[n_hidden, n_hidden]),
-    'h5': tf.get_variable('h5', shape=[n_hidden, n_hidden]),
-    'h6': tf.get_variable('h6', shape=[n_hidden, n_hidden]),
-    'h7': tf.get_variable('h7', shape=[n_hidden, n_hidden]),
-    'out': tf.Variable(tf.random_normal([n_hidden, n_output]))
+    'h1': tf.get_variable('h1', shape=[n_input, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
+    'h2': tf.get_variable('h2', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
+    'h3': tf.get_variable('h3', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
+    'h4': tf.get_variable('h4', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
+    'h5': tf.get_variable('h5', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
+    'h6': tf.get_variable('h6', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
+    'h7': tf.get_variable('h7', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
+    'out': tf.get_variable('out', shape=[n_hidden, n_output], initializer=tf.contrib.layers.xavier_initializer())
 }
 biases = {
-    'b1': tf.Variable(tf.random_normal([n_hidden])),
-    'b2': tf.Variable(tf.random_normal([n_hidden])),
-    'b3': tf.Variable(tf.random_normal([n_hidden])),
-    'b4': tf.Variable(tf.random_normal([n_hidden])),
-    'b5': tf.Variable(tf.random_normal([n_hidden])),
-    'b6': tf.Variable(tf.random_normal([n_hidden])),
-    'b7': tf.Variable(tf.random_normal([n_hidden])),
-    'out': tf.Variable(tf.random_normal([n_output]))
+    'b1': tf.Variable(tf.zeros([n_hidden])),
+    'b2': tf.Variable(tf.zeros([n_hidden])),
+    'b3': tf.Variable(tf.zeros([n_hidden])),
+    'b4': tf.Variable(tf.zeros([n_hidden])),
+    'b5': tf.Variable(tf.zeros([n_hidden])),
+    'b6': tf.Variable(tf.zeros([n_hidden])),
+    'b7': tf.Variable(tf.zeros([n_hidden])),
+    'out': tf.Variable(tf.zeros([n_output]))
 }
 
 

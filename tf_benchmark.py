@@ -4,14 +4,15 @@ import time
 import matplotlib.pyplot as plt
 from pandas import read_csv
 
-def calculateRMSE(real, predict):
+
+def calculate_rmse(real, predict):
     m = len(real)
     return np.sqrt(np.sum(np.power((real - predict), 2)) / m)
+
 
 test_size = 150
 df = read_csv('data/mastigadin.csv', header=None)
 df.set_index(list(df)[0], inplace=True)
-
 
 y_total = df.iloc[:, -1:].values
 x_total = df.iloc[:, :-1].values
@@ -20,7 +21,6 @@ x_train = x_total[:-test_size, :]
 y_test = y_total[-test_size:, :]
 x_test = x_total[-test_size:, :]
 n_samples = x_train.shape[0]
-
 
 tempo = time.time()
 epochs = 200
@@ -92,25 +92,25 @@ with tf.Session() as sess:
         # Loop over all batches
         tp = time.time()
         for i in range(total_batch):
-            batch_x = x_train[i*batch_size:(i+1)*batch_size]
-            batch_y = y_train[i*batch_size:(i+1)*batch_size]
+            batch_x = x_train[i * batch_size:(i + 1) * batch_size]
+            batch_y = y_train[i * batch_size:(i + 1) * batch_size]
             # Run optimization op (backprop) and cost op (to get loss value)
             _, c = sess.run([train_op, cost], feed_dict={X: batch_x, Y: batch_y})
             # Compute average loss
             avg_cost += c / total_batch
         # Display logs per epoch step
         if epoch % display_step == 0:
-            print("Epoch:", '%04d' % (epoch + 1), "cost={:.9f}".format(avg_cost), "TIME: %.2f" % (time.time()-tp))
+            print("Epoch:", '%04d' % (epoch + 1), "cost={:.9f}".format(avg_cost), "TIME: %.2f" % (time.time() - tp))
     print("Optimization Finished!")
-    print('TIME: '+str(time.time()-tempo))
+    print('TIME: ' + str(time.time() - tempo))
 
     # Test model
     y_trained = sess.run(pred, feed_dict={X: x_train})
     y_tested = sess.run(pred, feed_dict={X: x_test})
 
-    error_train = calculateRMSE(y_train, y_trained)
+    error_train = calculate_rmse(y_train, y_trained)
     print('TRAIN: RMSE - ' + str(error_train))
-    error_test = calculateRMSE(y_test, y_tested)
+    error_test = calculate_rmse(y_test, y_tested)
     print('\nVAL:   RMSE - ' + str(error_test))
 
 plt.plot(y_total, label='REAL DATA')

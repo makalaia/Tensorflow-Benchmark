@@ -7,7 +7,8 @@ from keras.layers import Dense
 from keras.models import Sequential
 from pandas import read_csv
 
-def calculateRMSE(real, predict):
+
+def calculate_rmse(real, predict):
     m = len(real)
     return np.sqrt(np.sum(np.power((real - predict), 2)) / m)
 
@@ -40,16 +41,16 @@ model.add(Dense(1))
 # fit
 model.compile(loss='mean_squared_error', optimizer=optmizer)
 model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test), verbose=2)
-print('TIME: '+str(time.time()-tempo))
+print('TIME: ' + str(time.time() - tempo))
 
 # predict
 y_trained = model.predict(x_train)
 y_tested = model.predict(x_test)
 
 # errors
-error_train = calculateRMSE(y_train, y_trained)
+error_train = calculate_rmse(y_train, y_trained)
 print('TRAIN: RMSE - ' + str(error_train))
-error_test = calculateRMSE(y_test, y_tested)
+error_test = calculate_rmse(y_test, y_tested)
 print('\nVAL:   RMSE - ' + str(error_test))
 
 # plot

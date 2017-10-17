@@ -23,7 +23,7 @@ n_samples = x_train.shape[0]
 
 tempo = time.time()
 epochs = 200
-batch_size = 128
+batch_size = 64
 
 n_input = x_total.shape[1]
 n_output = 1

@@ -1,11 +1,12 @@
 import keras
 import numpy as np
 import time
-import matplotlib.pyplot as plt
 
 from keras.layers import Dense
 from keras.models import Sequential
 from pandas import read_csv
+
+from data_utils import plot, get_errors
 
 
 def calculate_rmse(real, predict):
@@ -13,16 +14,18 @@ def calculate_rmse(real, predict):
     return np.sqrt(np.sum(np.power((real - predict), 2)) / m)
 
 
-test_size = 150
+val_size = 120
+test_size = 30
 df = read_csv('data/mastigadin.csv', header=None)
-df.set_index(list(df)[0], inplace=True)
 
 y_total = df.iloc[:, -1:].values
 x_total = df.iloc[:, :-1].values
-y_train = y_total[:-test_size, :]
-x_train = x_total[:-test_size, :]
 y_test = y_total[-test_size:, :]
 x_test = x_total[-test_size:, :]
+y_train = y_total[:-val_size-test_size, :]
+x_train = x_total[:-val_size-test_size, :]
+y_val = y_total[-val_size-test_size-1:-test_size, :]
+x_val = x_total[-val_size-test_size-1:-test_size, :]
 
 tempo = time.time()
 
@@ -42,23 +45,21 @@ model.add(Dense(1))
 
 # fit
 model.compile(loss='mean_squared_error', optimizer=optmizer)
-model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test), verbose=2)
+model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_val, y_val), verbose=2)
 print('TIME: ' + str(time.time() - tempo))
 
 # predict
 y_trained = model.predict(x_train)
+y_validated = model.predict(x_val)
 y_tested = model.predict(x_test)
 
 # errors
-error_train = calculate_rmse(y_train, y_trained)
-print('TRAIN: RMSE - ' + str(error_train))
-error_test = calculate_rmse(y_test, y_tested)
-print('\nVAL:   RMSE - ' + str(error_test))
+errors_train = get_errors(y_train, y_trained)
+print('TRAIN: RMSE - ' + str(errors_train))
+errors_val = get_errors(y_val, y_validated)
+print('\nVAL:   RMSE - ' + str(errors_val))
+errors_test = get_errors(y_test, y_tested)
+print('\nTEST:   RMSE - ' + str(errors_test))
 
 # plot
-plt.plot(y_total, label='REAL DATA')
-plt.plot(y_trained, label='TRAINED DATA')
-plt.plot(range(len(y_train), len(y_total)), y_tested, label='TEST DATA')
-plt.legend()
-plt.title('KERAS')
-plt.show()
+plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='KERAS-'+str(errors_val['rmspe']))

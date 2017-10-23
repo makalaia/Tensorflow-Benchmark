@@ -1,11 +1,8 @@
-import numpy as np
 import tensorflow as tf
 import time
-import matplotlib.pyplot as plt
 from pandas import read_csv
 from math import ceil
-
-from data_utils import shuffle_data, calculate_rmse, plot, calculate_rmspe, get_errors
+from data_utils import shuffle_data, get_errors
 
 val_size = 120
 test_size = 30
@@ -56,6 +53,10 @@ biases = {
     'out': tf.Variable(tf.zeros([n_output]))
 }
 
+l2_loss = 0.005 * (tf.nn.l2_loss(weights['h2']) +
+                  tf.nn.l2_loss(weights['h4']) +
+                  tf.nn.l2_loss(weights['h6']))
+
 
 # Create model
 def multilayer_perceptron(x):
@@ -74,7 +75,7 @@ def multilayer_perceptron(x):
 pred = multilayer_perceptron(X)
 
 # Define loss and optimizer
-cost = tf.reduce_mean(tf.squared_difference(pred, Y))
+cost = tf.reduce_mean(tf.add(tf.reduce_mean(tf.squared_difference(pred, Y)), l2_loss))
 optimizer = tf.train.AdamOptimizer()
 train_op = optimizer.minimize(cost)
 
@@ -82,7 +83,7 @@ train_op = optimizer.minimize(cost)
 init = tf.global_variables_initializer()
 
 display_step = 1
-SHUFFLE = True
+SHUFFLE = False
 with tf.Session() as sess:
     sess.run(init)
     # Training cycle
@@ -120,4 +121,4 @@ errors_test = get_errors(y_test, y_tested)
 print('\nTEST:   RMSE - ' + str(errors_test))
 
 # plot
-plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='TF-MAO-'+str(errors_val['rmspe']))
+# plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='TF-MAO-' + str(errors_val['rmspe']))

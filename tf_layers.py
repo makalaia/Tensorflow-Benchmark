@@ -2,13 +2,11 @@ import numpy as np
 import tensorflow as tf
 import time
 from pandas import read_csv
-from math import ceil
-
-from data_utils import plot, get_errors
+from data_utils import get_errors
 
 val_size = 120
 test_size = 30
-df = read_csv('data/mastigadin.csv', header=None)
+df = read_csv('data/mastigadin2.csv', header=None)
 
 y_total = df.iloc[:, -1:].values
 x_total = df.iloc[:, :-1].values
@@ -113,4 +111,4 @@ print('\nVAL:   RMSE - ' + str(errors_val))
 errors_test = get_errors(y_test, y_tested)
 print('\nTEST:   RMSE - ' + str(errors_test))
 
-plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='TF-LAYERS-' + str(errors_val['rmspe']))
+# plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='TF-LAYERS-' + str(errors_val['rmspe']))

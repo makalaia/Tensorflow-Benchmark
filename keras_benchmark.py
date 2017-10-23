@@ -1,17 +1,11 @@
 import keras
-import numpy as np
 import time
 
-from keras.layers import Dense
+from keras.layers import Dense, regularizers
 from keras.models import Sequential
 from pandas import read_csv
 
-from data_utils import plot, get_errors
-
-
-def calculate_rmse(real, predict):
-    m = len(real)
-    return np.sqrt(np.sum(np.power((real - predict), 2)) / m)
+from data_utils import get_errors
 
 
 val_size = 120
@@ -35,11 +29,11 @@ batch_size = 64
 optmizer = keras.optimizers.Adam()
 model = Sequential()
 model.add(Dense(256, input_shape=(x_train.shape[1],)))
+model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
 model.add(Dense(256, activation='relu'))
+model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
 model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu'))
+model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
 model.add(Dense(256, activation='relu'))
 model.add(Dense(1))
 
@@ -62,4 +56,4 @@ errors_test = get_errors(y_test, y_tested)
 print('\nTEST:   RMSE - ' + str(errors_test))
 
 # plot
-plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='KERAS-'+str(errors_val['rmspe']))
+# plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='KERAS-'+str(errors_val['rmspe']))

@@ -1,7 +1,7 @@
 import keras
 import time
 
-from keras.layers import Dense, regularizers
+from keras.layers import Dense
 from keras.models import Sequential
 from pandas import read_csv
 
@@ -29,11 +29,11 @@ batch_size = 64
 optmizer = keras.optimizers.Adam()
 model = Sequential()
 model.add(Dense(256, input_shape=(x_train.shape[1],)))
-model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
 model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
 model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
+model.add(Dense(256, activation='relu'))
+model.add(Dense(256, activation='relu'))
+model.add(Dense(256, activation='relu'))
 model.add(Dense(256, activation='relu'))
 model.add(Dense(1))
 

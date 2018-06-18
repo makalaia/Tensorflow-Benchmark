@@ -1,14 +1,18 @@
 import keras
 import time
+import numpy as np
+import os
+import random as rn
+import tensorflow as tf
+import keras.backend as K
 
-from keras.layers import Dense
+from keras.layers import Dense, Dropout, regularizers
 from keras.models import Sequential
 from pandas import read_csv
 
-from data_utils import get_errors
+from data_utils import get_errors, plot
 
-
-val_size = 120
+val_size = 60
 test_size = 30
 df = read_csv('data/mastigadin.csv', header=None)
 
@@ -23,17 +27,29 @@ x_val = x_total[-val_size-test_size-1:-test_size, :]
 
 tempo = time.time()
 
+# random
+os.environ['PYTHONHASHSEED'] = '0'
+seed = 123456
+if seed is not None:
+    np.random.seed(seed)
+    rn.seed(seed)
+    tf.set_random_seed(seed)
+    K.set_session(tf.Session(graph=tf.get_default_graph()))
+
 # Neural net
 epochs = 200
 batch_size = 64
 optmizer = keras.optimizers.Adam()
 model = Sequential()
 model.add(Dense(256, input_shape=(x_train.shape[1],)))
+model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
+model.add(Dropout(.2))
 model.add(Dense(256, activation='relu'))
+model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
+model.add(Dropout(.3))
 model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu'))
-model.add(Dense(256, activation='relu'))
+model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(.005)))
+model.add(Dropout(.4))
 model.add(Dense(256, activation='relu'))
 model.add(Dense(1))
 
@@ -56,4 +72,4 @@ errors_test = get_errors(y_test, y_tested)
 print('\nTEST:   RMSE - ' + str(errors_test))
 
 # plot
-# plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='KERAS-'+str(errors_val['rmspe']))
+plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='KERAS-'+str(errors_val['rmspe']))

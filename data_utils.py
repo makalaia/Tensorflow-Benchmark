@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import re
 import scipy.stats as st
 from scipy.fftpack import fft, ifft, fftshift
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
-from scipy.signal import correlate
+from scipy.signal import correlate, detrend
 
 
 class BestHyperparameters(dict):
@@ -65,14 +66,10 @@ def calculate_rmspe(real, predict):
     @param predict: lista com os valores preditos
     @return: valor do RMSPE calculado
     """
-    if isinstance(real, pd.DataFrame):
-        real = real.values
-    if isinstance(predict, pd.DataFrame):
-        predict = predict.values
     real = real.flatten();
     predict = predict.flatten();
     if (real.shape != predict.shape):
-        raise Exception('The shapes must be the same to perform the calculation Real: %d\tPredict: %d' %
+        raise ValueError('The shapes must be the same to perform the calculation Real: %d\tPredict: %d' %
                         (real.shape, predict.shape))
     m = len(real)
     t = np.divide((real - predict), real, out=np.zeros_like(real), where=real != 0)
@@ -86,14 +83,10 @@ def calculate_rmse(real, predict):
     @param predict: lista com os valores preditos
     @return: valor do RMSE calculado
     """
-    if isinstance(real, pd.DataFrame):
-        real = real.values
-    if isinstance(predict, pd.DataFrame):
-        predict = predict.values
     real = real.flatten();
     predict = predict.flatten();
     if real.shape != predict.shape:
-        raise Exception('The shapes must be the same to perform the calculation Real: %s\tPredict: %s' %
+        raise ValueError('The shapes must be the same to perform the calculation Real: %s\tPredict: %s' %
                         (real.shape, predict.shape))
     m = len(real)
     return np.sqrt(np.sum(np.power((real - predict), 2)) / m)
@@ -152,10 +145,6 @@ def get_max_error(real, predict):
     @param predict: vetor em que se deseja comparar com o real
     @return: maximo erro em porcentagem
     """
-    if isinstance(real, pd.DataFrame):
-        real = real.values
-    if isinstance(predict, pd.DataFrame):
-        predict = predict.values
     erro_max = 0
     for r, p in zip(real, predict):
         if r != 0:
@@ -174,21 +163,42 @@ def get_avg_error(real, predict):
     @param predict: vetor em que se deseja comparar com o real
     @return: erro total em porcentagem
     """
-    if isinstance(real, pd.DataFrame):
-        real = real.values
-    if isinstance(predict, pd.DataFrame):
-        predict = predict.values
     r = np.sum(real)
     p = np.sum(predict)
     return (r - p) / r * 100
 
 
-def cross_correlation(x, y, shift=1):
-    y = y[shift:]
-    x = x[:-shift]
-    lag = np.argmax(correlate(x, y))
-    r = np.roll(x, shift=int(np.ceil(lag)))
-    return r
+def get_pct_error(real, predict, round=2):
+    mask = real != 0
+    return np.round((np.fabs(real - predict) / real)[mask].mean() * 100, round)
+
+
+def cross_correlation(x, y, normed=True, mode=2, detrend=detrend, maxlags=12):
+
+    Nx = len(x)
+    if Nx != len(y):
+        raise ValueError('x and y must be equal length')
+
+    x = detrend(np.asarray(x))
+    y = detrend(np.asarray(y))
+
+    c = np.correlate(x, y, mode=mode)
+
+    if normed:
+        c /= np.sqrt(np.dot(x, x) * np.dot(y, y))
+
+    if maxlags is None:
+        maxlags = Nx - 1
+
+    if maxlags >= Nx or maxlags < 1:
+        raise ValueError('maxlags must be None or strictly '
+                         'positive < %d' % Nx)
+
+    lags = np.arange(-maxlags, maxlags + 1)
+
+    c = c[Nx - 1 - maxlags:Nx + maxlags]
+
+    return lags, c
 
 
 def cross_correlation_using_fft(x, y):
@@ -209,11 +219,17 @@ def compute_shift(x, y):
 
 
 def get_errors(real, predict):
+    if isinstance(real, (pd.DataFrame, pd.Series)):
+        real = real.values
+    if isinstance(predict, (pd.DataFrame, pd.Series)):
+        predict = predict.values
     errors = dict()
     errors['rmse'] = calculate_rmse(real, predict)
     errors['rmspe'] = calculate_rmspe(real, predict) * 100
     errors['max_error'] = get_max_error(real, predict)
     errors['avg_error'] = get_avg_error(real, predict)
+    errors['percentage_error'] = get_pct_error(real, predict)
+    errors['median'] = errors['rmse']/np.median(real) * 100
     return errors
 
 
@@ -236,7 +252,10 @@ def plot(y, y_trained, y_val, y_test=None, tittle='Previsao', margin=None):
         y_val = y_val.values
 
     train_size = len(y_trained)
-    val_size = len(y_val)
+    try:
+        val_size = len(y_val)
+    except TypeError:
+        val_size = 0
     y_train = y[:train_size]
     # print('Margem de Erro: ' + str(margin))
 
@@ -249,9 +268,10 @@ def plot(y, y_trained, y_val, y_test=None, tittle='Previsao', margin=None):
         margem = margin * y_val
     plt.plot(y, linewidth=2, label='Real Data', color='blue')
     plt.plot(y_trained, label='Train Data', color='green')
-    x_val = np.arange(train_size - 1, train_size + val_size - 1)
-    plt.plot(x_val, y_val, label='Validation Data', color='red')
-    plt.fill_between(x_val, y_val - margem, y_val + margem, facecolor='red', alpha=.5)
+    if val_size > 0:
+        x_val = np.arange(train_size - 1, train_size + val_size - 1)
+        plt.plot(x_val, y_val, label='Validation Data', color='red')
+        plt.fill_between(x_val, y_val - margem, y_val + margem, facecolor='red', alpha=.5)
     if y_test is not None:
         if margin is None:
             margem = calculate_rmse(y_train, y_trained)
@@ -273,9 +293,12 @@ def __plot_bar__(real, predict, index=None, title=None, confidence=None, industr
     plt.subplots()
     ind = np.arange(0, real.size)
     bar_width = .35
+    real = real.values.flatten()
+    predict = predict.values.flatten()
     if industria is not None and industria.size == real.size:
+        industria = industria.flatten()
         bar_width = .25
-        plt.bar(ind +bar_width*2, industria, bar_width,
+        plt.bar(ind + bar_width * 2, industria, bar_width,
                 alpha=.5,
                 color='g',
                 label='predict-ST')
@@ -325,13 +348,21 @@ def plot_bar(y_total, y_pred, n_meses, index=None, title=None, confidence=None, 
         if confidence > 1:
             raise ValueError('Confidence must be a value between 0 and 1')
         yerr = np.zeros(n_meses)
-        confidence += (1-confidence)/2
+        confidence += (1 - confidence) / 2
         confidence = st.norm.ppf(confidence)
         for i in range(1, n_meses + 1):
             index_pos = np.where(y_total.index == ind[i - 1])[0][0]
-            yerr[i - 1] = confidence*calculate_rmse(y_total.iloc[index_pos-val_size:index_pos], y_pred[index_pos-val_size:index_pos])
+            yerr[i - 1] = confidence * calculate_rmse(y_total.iloc[index_pos - val_size:index_pos],
+                                                      y_pred[index_pos - val_size:index_pos])
 
     __plot_bar__(real, pred, index=index, title=title, confidence=yerr, industria=industria)
+
+
+def get_confidence_margin(y, y_pred, confidence):
+    confidence += (1 - confidence) / 2
+    confidence = st.norm.ppf(confidence)
+    yerr = confidence * calculate_rmse(y, y_pred)
+    return yerr
 
 
 def remove_outliers(df, quantile_max=.995):
@@ -354,7 +385,20 @@ def reduce_dimensions(x, dimensions):
         x = pd.DataFrame(pca.fit_transform(x))
         return x, pca, scaler
 
-def shuffle_data(x, y):
+
+def shuffle_data(x, y, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
     assert len(x) == len(y)
     p = np.random.permutation(len(x))
     return x[p], y[p]
+
+
+def remove_leading_zeros(df, column=-1):
+    col = df.iloc[:, column]
+    df = df.iloc[col.nonzero()[0][0]:, :]
+    return df
+
+def get_numbers_from_string(string):
+    numbers = int(re.search(r'\d+', string).group())
+    return numbers

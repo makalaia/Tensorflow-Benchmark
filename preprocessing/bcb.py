@@ -1,18 +1,25 @@
 import time
-
 import numpy as np
 import pandas as pd
 import quandl
-from dateutil.relativedelta import relativedelta
 
+from dateutil.relativedelta import relativedelta
 from preprocessing import indice_bcb
+
+
+def get_quandl_key():
+    try:
+        with open('keys/quandl.key', 'r') as file:
+            quandl_key = file.readline()
+    except FileNotFoundError:
+        quandl_key = None
+    return quandl_key
 
 INDEX_MENSAL = ['ICC', 'DESEMPREGO', 'VENDAS_AUTOPECAS_SUDESTE', 'PIB', 'PRODUCAO_ACO', 'IPCA', 'VENDAS_MOTOCICLOS', 'VENDAS_PARTES_PECAS_AUTOMOVEIS']
 INDEX_DIARIO = ['DOLAR_VENDA']
 INDEX_TOTAL = INDEX_DIARIO + INDEX_MENSAL
 BCB_INDEX_DEFAULT = ['ICC', 'DESEMPREGO', 'PIB', 'IPCA', 'DOLAR_VENDA']
-with open('keys/quandl.key', 'r') as file:
-    QUANDL_API_KEY = file.readline()
+QUANDL_API_KEY = get_quandl_key()
 DATE_BEGIN = pd.to_datetime('1/1/2013')
 DATE_END = pd.to_datetime('today')
 

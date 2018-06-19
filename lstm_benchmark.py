@@ -1,15 +1,31 @@
 import tensorflow as tf
 import time
 import os
+import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import RobustScaler
+from tensorflow.contrib.rnn import LSTMBlockCell
+
 from data_utils import get_errors, remove_outliers, shuffle_data, plot
 from preprocessing.bcb import BCB
 from pandas import read_csv
 from preprocessing.feature_selection import FeatureSelection
 from math import ceil
 from preprocessing.interpret_days import sum_days
+
+
+def reshape_input(x, back):
+    x = np.asarray(x)
+    reshaped_x = np.zeros((x.shape[0] - back, back, x.shape[1]))
+    for i in range(0, x.shape[0] - back):
+        reshaped_x[i] = x[i:i + back, :]
+    return reshaped_x
+
+
+def reshape_output(y, back):
+    y = np.asarray(y)
+    return y[back:]
 
 seed = 123456
 tf.set_random_seed(seed=seed)
@@ -50,22 +66,26 @@ df.drop('NUM_VENDEDOR', axis=1, inplace=True)
 
 y_total = df.iloc[:, -1:].values
 x_total = df.iloc[:, :-1].values
-y_test = y_total[-test_size:, :]
-x_test = x_total[-test_size:, :]
 y_train = y_total[:-val_size-test_size, :]
 x_train = x_total[:-val_size-test_size, :]
-y_val = y_total[-val_size-test_size-1:-test_size, :]
-x_val = x_total[-val_size-test_size-1:-test_size, :]
 n_samples = x_train.shape[0]
 
+# normalize
 scalerX = RobustScaler(quantile_range=(10, 90))
+scalerX.fit(x_train)
 scalerY = RobustScaler(quantile_range=(10, 90))
-x_train = scalerX.fit_transform(x_train)
-y_train = scalerY.fit_transform(y_train)
-x_val = scalerX.transform(x_val)
-y_val = scalerY.transform(y_val)
-x_test = scalerX.transform(x_test)
-y_test = scalerY.transform(y_test)
+scalerY.fit(y_train)
+yt = scalerY.transform(y_total)
+xt = scalerX.transform(x_total)
+
+# reshape input to be [samples, time steps, features]
+timesteps = 7
+xt = reshape_input(xt, timesteps)
+yt = reshape_output(yt, timesteps)
+train_size = len(y_total) - val_size - test_size - timesteps
+x_train, y_train = xt[:train_size, :], yt[:train_size, :]
+x_val, y_val = xt[train_size:-test_size, :], yt[train_size:-test_size, :]
+x_test, y_test = xt[-test_size:, :], yt[-test_size:, :]
 
 tempo = time.time()
 epochs = 200
@@ -74,54 +94,30 @@ batch_size = 32
 
 n_input = x_total.shape[1]
 n_outputs = 1
-n_hidden = 256
+n_hidden = 128
 
 # tf Graph input
-X = tf.placeholder("float", [None, n_input])
+X = tf.placeholder("float", [None, timesteps, n_input])
 Y = tf.placeholder("float", [None, n_outputs])
-drop1 = tf.placeholder_with_default(1.0, shape=())
-drop2 = tf.placeholder_with_default(1.0, shape=())
-drop3 = tf.placeholder_with_default(1.0, shape=())
-l2_beta = tf.placeholder_with_default(0.0, shape=())
 
 # Store layers weight & bias
 weights = {
-    'h1': tf.get_variable('h1', shape=[n_input, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
-    'h2': tf.get_variable('h2', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer(), regularizer=tf.contrib.layers.l2_regularizer(l2_beta)),
-    'h3': tf.get_variable('h3', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
-    'h4': tf.get_variable('h4', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer(), regularizer=tf.contrib.layers.l2_regularizer(l2_beta)),
-    'h5': tf.get_variable('h5', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
-    'h6': tf.get_variable('h6', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer(), regularizer=tf.contrib.layers.l2_regularizer(l2_beta)),
-    'h7': tf.get_variable('h7', shape=[n_hidden, n_hidden], initializer=tf.contrib.layers.xavier_initializer()),
     'out': tf.get_variable('out', shape=[n_hidden, n_outputs], initializer=tf.contrib.layers.xavier_initializer())
 }
 biases = {
-    'b1': tf.Variable(tf.zeros([n_hidden])),
-    'b2': tf.Variable(tf.zeros([n_hidden])),
-    'b3': tf.Variable(tf.zeros([n_hidden])),
-    'b4': tf.Variable(tf.zeros([n_hidden])),
-    'b5': tf.Variable(tf.zeros([n_hidden])),
-    'b6': tf.Variable(tf.zeros([n_hidden])),
-    'b7': tf.Variable(tf.zeros([n_hidden])),
     'out': tf.Variable(tf.zeros([n_outputs]))
 }
 
 
-# Create model
-def mlp(x):
-    layer_1 = tf.nn.relu(tf.add(tf.matmul(x, weights['h1']), biases['b1']))
-    layer_2 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(layer_1, weights['h2']), biases['b2'])), drop1)
-    layer_3 = tf.nn.relu(tf.add(tf.matmul(layer_2, weights['h3']), biases['b3']))
-    layer_4 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(layer_3, weights['h4']), biases['b4'])), drop2)
-    layer_5 = tf.nn.relu(tf.add(tf.matmul(layer_4, weights['h5']), biases['b5']))
-    layer_6 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(layer_5, weights['h6']), biases['b6'])), drop3)
-    layer_7 = tf.nn.relu(tf.add(tf.matmul(layer_6, weights['h7']), biases['b7']))
-    out_layer = tf.matmul(layer_7, weights['out']) + biases['out']
-    return out_layer
-
-
 # Construct model
-pred = mlp(X)
+def RNN(x, weights, biases):
+    x = tf.unstack(x, timesteps, 1)
+    lstm_cell = LSTMBlockCell(n_hidden, forget_bias=1.0)
+    outputs, states = tf.contrib.rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+    return tf.matmul(outputs[-1], weights['out']) + biases['out']
+
+
+pred = RNN(X, weights, biases)
 
 # Define loss and optimizer
 reg_loss = sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
@@ -143,7 +139,6 @@ with tf.Session(config=config) as sess:
     # Training cycle
     x_trained, y_trained = x_train, y_train
     for epoch in range(epochs):
-        avg_cost = 0.
         total_batch = ceil(n_samples / batch_size)
         # Loop over all batches
         if SHUFFLE is True:
@@ -153,9 +148,8 @@ with tf.Session(config=config) as sess:
             batch_x = x_trained[i * batch_size:(i + 1) * batch_size]
             batch_y = y_trained[i * batch_size:(i + 1) * batch_size]
             # Run optimization op (backprop) and cost op (to get loss value)
-            _, c = sess.run([train_op, cost], feed_dict={X: batch_x, Y: batch_y, drop1: .8, drop2: .7, drop3: .6, l2_beta: .005})
+            _, c = sess.run([train_op, cost], feed_dict={X: batch_x, Y: batch_y})
             # Compute average loss
-            avg_cost += c / total_batch
         # Display logs per epoch step
         if epoch % display_step == 0:
             y_trained = sess.run(pred, feed_dict={X: x_train})
@@ -191,4 +185,4 @@ with tf.Session(config=config) as sess:
     print('\nTEST:\nRMSE: ' + str(errors_test['rmse']))
     print('RMSPE: ' + str(errors_test['rmspe']))
 
-    plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='TF-MLP-' + '-' + str(errors_val['rmspe']))
+    plot(y_total[timesteps:], y_trained, y_validated, y_tested, margin=.2, tittle='TF-LSTM-' + '-' + str(errors_val['rmspe']))

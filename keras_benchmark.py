@@ -37,7 +37,6 @@ print(target_product)
 df_month = read_csv('data/monthly_data.csv')
 trainer = Trainer(df_daily=dataframe, df_monthly=df_month)
 x_train, y_train, x_val, y_val, x_test, y_test = trainer.load_data(val_size=val_size, test_size=test_size, target_column=target_product)
-y_total = np.concatenate((y_train, y_val, y_test))
 tempo = time.time()
 epochs = 200
 learning_rate = 0.001
@@ -85,6 +84,7 @@ y_test = trainer.inverse_transformY(y_test)
 y_trained = trainer.inverse_transformY(y_trained)
 y_validated = trainer.inverse_transformY(y_validated)
 y_tested = trainer.inverse_transformY(y_tested)
+y_total = np.concatenate((y_train, y_val, y_test))
 
 # errors
 print('PRODUTO: ' + columns[-1])

@@ -16,6 +16,7 @@ from data_utils import get_errors, plot, remove_outliers
 from preprocessing.bcb import BCB
 from preprocessing.feature_selection import FeatureSelection
 from preprocessing.interpret_days import sum_days
+from trainer import Trainer
 
 val_size = 120
 test_size = 60
@@ -28,47 +29,15 @@ for i in range(-1, -len(columns), -1):
     if 'PD_' in columns[i]:
         init = i + 1
         break
-
 prod = 1
 target_product = dataframe.columns[-prod+init]
 print(target_product)
 
 
 df_month = read_csv('data/monthly_data.csv')
-df = FeatureSelection().add_prod_delay_correlation(df_month, dataframe.copy(), target_product)
-
-bcb = BCB()
-bcb = bcb.get_dataframe(df.index[0], df.index[-1])
-if not bcb.empty:
-    bcb.set_index(df.index, inplace=True)
-    df = pd.concat((df, bcb), axis=1, join='inner')
-
-columns = list(df)
-columns[-1], columns[columns.index(target_product)] = columns[columns.index(target_product)], columns[-1]
-df = df.reindex(columns=columns)
-df.iloc[:, -1:] = remove_outliers(df.iloc[:, -1:])
-df = sum_days(df, past_days=31, prevision_days=31)
-df.drop('NUM_VENDEDOR', axis=1, inplace=True)
-
-y_total = df.iloc[:, -1:].values
-x_total = df.iloc[:, :-1].values
-y_test = y_total[-test_size:, :]
-x_test = x_total[-test_size:, :]
-y_train = y_total[:-val_size-test_size, :]
-x_train = x_total[:-val_size-test_size, :]
-y_val = y_total[-val_size-test_size-1:-test_size, :]
-x_val = x_total[-val_size-test_size-1:-test_size, :]
-n_samples = x_train.shape[0]
-
-scalerX = RobustScaler(quantile_range=(10, 90))
-scalerY = RobustScaler(quantile_range=(10, 90))
-x_train = scalerX.fit_transform(x_train)
-y_train = scalerY.fit_transform(y_train)
-x_val = scalerX.transform(x_val)
-y_val = scalerY.transform(y_val)
-x_test = scalerX.transform(x_test)
-y_test = scalerY.transform(y_test)
-
+trainer = Trainer(df_daily=dataframe, df_monthly=df_month)
+x_train, y_train, x_val, y_val, x_test, y_test = trainer.load_data(val_size=val_size, test_size=test_size, target_column=target_product)
+y_total = np.concatenate((y_train, y_val, y_test))
 tempo = time.time()
 epochs = 200
 learning_rate = 0.001
@@ -110,12 +79,12 @@ y_validated = model.predict(x_val)
 y_tested = model.predict(x_test)
 
 # invert
-y_train = scalerY.inverse_transform(y_train)
-y_val = scalerY.inverse_transform(y_val)
-y_test = scalerY.inverse_transform(y_test)
-y_trained = scalerY.inverse_transform(y_trained)
-y_validated = scalerY.inverse_transform(y_validated)
-y_tested = scalerY.inverse_transform(y_tested)
+y_train = trainer.inverse_transformY(y_train)
+y_val = trainer.inverse_transformY(y_val)
+y_test = trainer.inverse_transformY(y_test)
+y_trained = trainer.inverse_transformY(y_trained)
+y_validated = trainer.inverse_transformY(y_validated)
+y_tested = trainer.inverse_transformY(y_tested)
 
 # errors
 print('PRODUTO: ' + columns[-1])
@@ -131,4 +100,4 @@ errors_test = get_errors(y_test, y_tested)
 print('\nTEST:\nRMSE: ' + str(errors_test['rmse']))
 print('RMSPE: ' + str(errors_test['rmspe']))
 
-plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='TF-MLP-' + '-' + str(errors_val['rmspe']))
+plot(y_total, y_trained, y_validated, y_tested, margin=.2, tittle='KERAS-MLP-' + '-' + str(errors_val['rmspe']))

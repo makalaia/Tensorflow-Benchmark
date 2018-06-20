@@ -31,8 +31,8 @@ seed = 123456
 tf.set_random_seed(seed=seed)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-val_size = 60
-test_size = 30
+val_size = 120
+test_size = 60
 dataframe = read_csv('data/daily_data.csv')
 dataframe.set_index(list(dataframe)[0], inplace=True)
 columns = list(dataframe)

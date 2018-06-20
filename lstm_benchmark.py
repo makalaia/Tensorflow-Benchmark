@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import RobustScaler
-from tensorflow.contrib.rnn import LSTMBlockCell
+from tensorflow.contrib.rnn import LSTMBlockCell, DropoutWrapper
 
 from data_utils import get_errors, remove_outliers, shuffle_data, plot
 from preprocessing.bcb import BCB
@@ -31,8 +31,8 @@ seed = 123456
 tf.set_random_seed(seed=seed)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-val_size = 120
-test_size = 60
+val_size = 60
+test_size = 30
 dataframe = read_csv('data/daily_data.csv')
 dataframe.set_index(list(dataframe)[0], inplace=True)
 columns = list(dataframe)
@@ -112,7 +112,8 @@ biases = {
 # Construct model
 def RNN(x, weights, biases):
     x = tf.unstack(x, timesteps, 1)
-    lstm_cell = LSTMBlockCell(n_hidden, forget_bias=1.0)
+    lstm_cell = DropoutWrapper(LSTMBlockCell(n_hidden, forget_bias=1.0), variational_recurrent=True,
+                               input_size=x_train.shape[0], state_keep_prob=.7, output_keep_prob=.7, dtype=tf.float32)
     outputs, states = tf.contrib.rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
     return tf.matmul(outputs[-1], weights['out']) + biases['out']
 
